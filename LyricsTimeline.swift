@@ -104,6 +104,13 @@ struct LyricsRecord: Decodable, Identifiable, Sendable {
 
     var hasSyncedLyrics: Bool { !(syncedLyrics?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true) }
     var hasLyrics: Bool { instrumental || hasSyncedLyrics || !(plainLyrics?.isEmpty ?? true) }
+    var likelyJapanese: Bool {
+        if instrumental { return true }
+        let text = hasSyncedLyrics ? (syncedLyrics ?? "") : (plainLyrics ?? "")
+        return text.unicodeScalars.contains {
+            (0x3040...0x30FF).contains($0.value) || (0xFF66...0xFF9F).contains($0.value)
+        }
+    }
     var document: LyricsDocument {
         if instrumental { return LyricsDocument(cues: [], isTimed: true, source: "LRCLIB", instrumental: true) }
         let raw = hasSyncedLyrics ? syncedLyrics! : (plainLyrics ?? "")
@@ -118,7 +125,7 @@ enum LyricsMatcher {
     }
 
     static func score(_ record: LyricsRecord, for track: MusicTrack) -> Double? {
-        guard record.hasLyrics else { return nil }
+        guard record.hasLyrics, record.likelyJapanese else { return nil }
         let title = normalized(track.title), otherTitle = normalized(record.trackName)
         let artist = normalized(track.artist), otherArtist = normalized(record.artistName)
         guard !title.isEmpty, !artist.isEmpty,
@@ -140,7 +147,15 @@ enum LyricsMatcher {
     }
 
     static func best(_ records: [LyricsRecord], for track: MusicTrack) -> LyricsRecord? {
-        records.compactMap { record in score(record, for: track).map { (record, $0) } }
-            .sorted { lhs, rhs in lhs.1 == rhs.1 ? lhs.0.id < rhs.0.id : lhs.1 > rhs.1 }.first?.0
+        var selected: LyricsRecord?
+        var highest = -Double.infinity
+        for record in records {
+            guard let value = score(record, for: track) else { continue }
+            if value > highest || (value == highest && record.id < (selected?.id ?? Int.max)) {
+                selected = record
+                highest = value
+            }
+        }
+        return selected
     }
 }

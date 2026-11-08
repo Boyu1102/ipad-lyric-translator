@@ -43,4 +43,6 @@ check(LyricsMatcher.best([record(7, duration: 214, sync: nil), correct], for: st
 check(LyricsMatcher.normalized("Ｅxample - Song") == LyricsMatcher.normalized("Example Song"), "Metadata normalization should handle punctuation and width")
 let decoded = try JSONDecoder().decode(LyricsRecord.self, from: Data(#"{"id":9,"trackName":"Example Song","artistName":"Example Artist","albumName":"Studio","duration":214,"instrumental":false,"plainLyrics":null,"syncedLyrics":"[00:01.00]一つの文です"}"#.utf8))
 check(decoded.document.isTimed && decoded.document.cues.count == 1, "Provider JSON must decode into timed full-line cues")
+let translatedInsteadOfOriginal = record(10, duration: 214, sync: "[00:01.00]This is a translated line")
+check(LyricsMatcher.best([translatedInsteadOfOriginal], for: studio) == nil, "A non-Japanese or romanized version must not be auto-selected as original lyrics")
 print("Timeline parsing, seek/advance/instrumental behavior, full-line lyrics and version matching tests passed.")

@@ -77,6 +77,10 @@ struct ContentView: View {
                                         Text("\(record.trackName) · \(record.artistName)")
                                         Text("\(record.albumName) · \(time(record.duration)) · \(record.hasSyncedLyrics ? "同步歌词" : "普通歌词")")
                                             .font(.caption).foregroundStyle(.secondary)
+                                        if !record.likelyJapanese {
+                                            Text("未检测到日文，可能是罗马音或其他语言版本")
+                                                .font(.caption).foregroundStyle(.orange)
+                                        }
                                     }.frame(maxWidth: .infinity, alignment: .leading)
                                 }.buttonStyle(.bordered)
                             }
