@@ -1,41 +1,42 @@
-# 歌词译伴 · 整句测试版 0.2
+# 歌词译伴 · 不读屏版 0.3
 
-与 Apple Music 并排使用的 iPad 日语歌词翻译工具。需要 iPadOS 27 或更新版本。
+为 Apple Music 提供日语歌词中文翻译。最低 iPadOS 18，使用系统 Translation 框架。
 
-## 0.2 的变化
+## 这次改变了什么
 
-- 使用 ScreenCaptureKit，只请求画面并设置 `capturesAudio = false`，不接入音乐音频、麦克风或音频会话。
-- 点击“开始翻译”后直接打开系统画面授权，随后自动准备日语→简体中文翻译。系统授权仍不可省略。
-- 默认筛选当前高亮歌词，先合并同一行的识别碎片，最多组合三行；整句稳定后才翻译。也可手动选择歌词区域前 3 行。
-- 优先翻译最新完整句；响应过慢时尝试重建会话，并提供重新连接。
-- 记住音乐窗口的左右位置和宽度。默认音乐在右侧、约占屏幕宽度 56%。
+0.1 和 0.2 的读屏路径在实际设备上影响了 Music 的声音，并出现误识别自身界面、错选歌词和追踪停滞。0.3 不再编译或启动任何屏幕捕获功能，不使用麦克风、不修改 Music 音量或播放队列，不需要分屏或左右区域设置。
 
-0.1 已完成一次真机安装，但存在 Music 静音和碎词识别问题。0.2 正在验证；关闭音频捕获不等于已证明 Apple Music 会恢复有声，新捕获权限能否通过免费签名也需要真机确认。
+本版通过 `MPMusicPlayerController.systemMusicPlayer` 读取 Music 当前曲目、播放状态和进度，用 LRCLIB 的 LRC 时间轴选择整句歌词，交由设备上的 Translation 框架翻译。歌词来源不是 Apple Music 的屏幕或非公开歌词接口。
+
+## 使用
+
+1. 先结束旧版仍在运行的屏幕共享/录屏，确认 Apple Music 恢复正常声音。
+2. 安装 0.3，先在 Music 播放歌曲，再点本 App 的“连接 Apple Music”。首次按提示允许“媒体与 Apple Music”访问。
+3. 本 App 自动匹配歌名、歌手、专辑和时长，并跟随播放时间。Music 可以在后台；本 App 可以全屏。
+4. 歌词有时间偏差时，展开“歌词来源与同步”，调整提前或延后 0.5 秒。
+5. 没有可靠匹配时选择正确版本，或手动找歌、导入自己的 LRC/TXT。无时间轴歌词或 Music 没提供播放时间时会明确提示手动切句，不伪造自动同步。
+
+联网查找仅把歌名、歌手、专辑和时长发给 LRCLIB，不传输屏幕、音乐音频、Apple 账号或音乐库清单。服务请求顺序执行、缓存匹配，并遵守 Retry-After。翻译在设备上进行。
+
+## 验证和限制
+
+- 自动测试覆盖 LRC 多时间标签、小数与 offset、同时间多行、间奏空行、前奏、向前/向后拖动、整句文本和歌曲版本匹配。
+- 构建检查安装包版本、Music 权限声明，并检查未链接 ScreenCaptureKit / ReplayKit。
+- 当前设备的 Music 是否返回曲目和进度，以及真实系统翻译的表现，仍需真机验证；编译和单元测试不能证明这些已经可用。
+- 歌词服务不保证覆盖全部歌曲或版本，时间轴可能与 Music 有偏差。没有时间轴时只支持手动切句。
+- 歌词解释及诗性表达仍受系统翻译质量限制；本版主要消除 OCR 造成的残缺、混行和自我识别。
+- App 前台可见时跟随；锁屏或 App 被系统挂起时不承诺继续运行，回到前台后重新读取 Music 当前时间。
 
 ## 打包
 
-在 Actions 中运行 **Build iPad app**。工作流使用 GitHub 的 `xcode-27` 标准预览机器，先运行句子选择测试，再生成工程并构建未签名 IPA。成功后下载 **LyricBridge-v2-visual**。
+Actions → **Build iPad app**。成功后下载 **LyricBridge-v3-music**。该文件包含未签名 IPA，可使用自己的个人开发签名安装。生成 App 的版本为 0.3.0、构建号 3。
 
-本项目源码在根目录，`project.yml` 明确列出本版使用的 6 个源文件。`main.swift` 是独立测试入口，不加入 iPad App。其余旧版 ReplayKit 文件暂留以供参考，不会被编译进 0.2。
+源文件由 `project.yml` 明确指定。根目录保留的旧版 OCR/捕获源文件和旧说明不编译进 0.3；其历史可用于回溯，但不代表本版功能。
 
-在 Mac 本地构建需要支持 iPadOS 27 的 Xcode 和 XcodeGen；先执行 `xcodegen generate`，再打开生成的 `LyricBridge.xcodeproj`。现存根目录旧的 plist/pbxproj/安装说明属于 0.1，不用于本版构建。
+## 官方依据和服务文档
 
-## 安装及使用
-
-1. 用自己的签名方式安装生成的 IPA；免费个人签名一般需要定期续签。当前屏幕捕获权限是否被保留，以实际签名结果为准。
-2. 将 Music 和本 App 并排打开，在“歌词位置与识别方式”中设置正确的左右位置和宽度。
-3. 点“开始翻译”，在系统提示中选择包含 Music 的画面；首次按提示准备翻译语言。
-4. 验证音乐是否仍有声音，再检查高亮整句及中文译文是否正常；如果出现捕获权限错误，先保留错误信息核查。
-5. 换歌时点“换歌 / 清空”，结束时点“停止”。
-
-文字识别和系统翻译在本机完成，不需要翻译 API 密钥。不会保存或上传屏幕录像。
-
-## 测试范围
-
-独立 Swift 测试覆盖碎片合并、暗行排除、相邻换行组合、三行上限、等待稳定和重复抑制。完整 Xcode 编译、签名权限、Music 音频、真实 Vision 结果和系统翻译生命周期，需要分别验证。
-
-## 参考
-
-- [苹果官方画面捕获示例](https://developer.apple.com/documentation/screencapturekit/capturing-screen-content-on-ios)
-- [音频捕获开关](https://developer.apple.com/documentation/screencapturekit/scstreamconfiguration/capturesaudio)
-- [GitHub Xcode 27 runner](https://github.blog/changelog/2026-09-10-xcode-27-runner-image-now-runs-on-macos-27/)
+- [苹果 systemMusicPlayer](https://developer.apple.com/documentation/mediaplayer/mpmusicplayercontroller/systemmusicplayer)
+- [苹果 nowPlayingItem](https://developer.apple.com/documentation/mediaplayer/mpmusicplayercontroller/nowplayingitem)
+- [苹果播放时间接口](https://developer.apple.com/documentation/mediaplayer/mpmediaplayback)
+- [苹果 Media Player 权限说明](https://developer.apple.com/documentation/mediaplayer)
+- [LRCLIB API](https://lrclib.net/docs)

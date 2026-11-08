@@ -7,18 +7,14 @@ permissions:
   contents: read
 jobs:
   build:
-    runs-on: xcode-27
+    runs-on: macos-15
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-      - name: Verify sentence selection
+      - name: Verify lyrics timeline and song matching
         run: |
           set -euo pipefail
-          if [ -f Shared/SentenceSelection.swift ]; then
-            swiftc Shared/SentenceSelection.swift Tests/main.swift -o /tmp/lyric-tests
-          else
-            swiftc SentenceSelection.swift main.swift -o /tmp/lyric-tests
-          fi
+          swiftc LyricsTimeline.swift main.swift -o /tmp/lyric-tests
           /tmp/lyric-tests
       - name: Install project generator
         run: brew install xcodegen
@@ -30,12 +26,25 @@ jobs:
           xcodebuild -project LyricBridge.xcodeproj -scheme LyricBridge \
             -configuration Release -destination 'generic/platform=iOS' \
             -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
+          xcrun otool -L build/Build/Products/Release-iphoneos/LyricBridge.app/LyricBridge > /tmp/lyric-linked-frameworks.txt
+          python3 - <<'PY'
+          import pathlib, plistlib
+          app = pathlib.Path('build/Build/Products/Release-iphoneos/LyricBridge.app')
+          info = plistlib.loads((app / 'Info.plist').read_bytes())
+          assert info['CFBundleShortVersionString'] == '0.3.0'
+          assert 'NSAppleMusicUsageDescription' in info
+          assert 'NSScreenCaptureUsageDescription' not in info
+          assert 'screen-capture' not in info.get('UIBackgroundModes', [])
+          linked = pathlib.Path('/tmp/lyric-linked-frameworks.txt').read_text()
+          assert 'ScreenCaptureKit' not in linked and 'ReplayKit' not in linked
+          print('Verified app version and absence of screen-capture frameworks/permissions.')
+          PY
           mkdir -p package/Payload
           cp -R build/Build/Products/Release-iphoneos/LyricBridge.app package/Payload/
           cd package
           zip -qry ../LyricBridge-unsigned.ipa Payload
       - uses: actions/upload-artifact@v4
         with:
-          name: LyricBridge-v2-visual
+          name: LyricBridge-v3-music
           path: LyricBridge-unsigned.ipa
           retention-days: 7

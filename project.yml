@@ -2,13 +2,13 @@ name: LyricBridge
 options:
   bundleIdPrefix: app.lyricbridge
   deploymentTarget:
-    iOS: '27.0'
+    iOS: '18.0'
 settings:
   base:
     SWIFT_VERSION: '5.0'
     TARGETED_DEVICE_FAMILY: '2'
-    CURRENT_PROJECT_VERSION: '2'
-    MARKETING_VERSION: 0.2.0
+    CURRENT_PROJECT_VERSION: '3'
+    MARKETING_VERSION: 0.3.0
     CODE_SIGN_STYLE: Automatic
 targets:
   LyricBridge:
@@ -17,10 +17,9 @@ targets:
     sources:
     - LyricBridgeApp.swift
     - LyricModel.swift
-    - VisualCapture.swift
-    - Wire.swift
-    - SentenceSelection.swift
-    - FrameProcessor.swift
+    - MusicMonitor.swift
+    - LyricsTimeline.swift
+    - LyricsService.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.lyricbridge.personal
@@ -30,9 +29,7 @@ targets:
         CFBundleDisplayName: 歌词译伴
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
-        NSScreenCaptureUsageDescription: 读取你允许的歌词画面，用于本机日语识别和翻译。
-        UIBackgroundModes:
-        - screen-capture
+        NSAppleMusicUsageDescription: 读取 Apple Music 当前歌曲和播放进度以同步翻译歌词；不会录屏或录音。
         UILaunchScreen: {}
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
@@ -42,10 +39,6 @@ targets:
         - UIInterfaceOrientationPortraitUpsideDown
         - UIInterfaceOrientationLandscapeLeft
         - UIInterfaceOrientationLandscapeRight
-    entitlements:
-      path: Generated/LyricBridge.entitlements
-      properties:
-        com.apple.developer.screen-recording: true
 schemes:
   LyricBridge:
     build:
