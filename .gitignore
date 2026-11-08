@@ -1,0 +1,7 @@
+build/
+package/
+Generated/
+*.ipa
+*.xcodeproj/xcuserdata/
+*.xcuserstate
+.DS_Store

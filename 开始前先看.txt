@@ -1,0 +1,15 @@
+现在优先使用借来的 MacBook，不需要 GitHub 或腾讯云。
+
+先点 Mac 左上角苹果图标 → 关于本机，查看芯片/处理器和 macOS 版本。
+如果已经装有 Xcode，打开 Xcode → About Xcode 查看版本。
+把这些信息告诉助手，先确认电脑是否适合连接你的 iPad。
+
+环境确认后：
+1. 在 Mac 上解压这个工程包。
+2. 双击 LyricBridge.xcodeproj，用 Xcode 打开。
+3. 详细步骤见 Mac安装步骤.md。
+
+GitHub 只作为可选在线打包途径，具体见 README.md。
+
+注意：此包是未编译的测试工程，不是能直接安装的 App。
+普通录屏已经测试通过；持续识别和翻译仍需编译后在 iPad 上验证。

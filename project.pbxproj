@@ -1,0 +1,436 @@
+// !$*UTF8*$!
+{
+	"archiveVersion" = 1;
+	"classes" = {
+	};
+	"objectVersion" = 56;
+	"objects" = {
+		"E75AFD248000B9E9C18788AB" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "LocalBridge.swift";
+			"sourceTree" = "<group>";
+		};
+		"F07B0458B2463B20CEA30D8A" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "LyricBridgeApp.swift";
+			"sourceTree" = "<group>";
+		};
+		"284127A503893A2D7790E68D" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "LyricModel.swift";
+			"sourceTree" = "<group>";
+		};
+		"F3F75BAFFF80937B3FE320AD" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "CaptureLink.swift";
+			"sourceTree" = "<group>";
+		};
+		"EC08AD8CA78005D126DB45B4" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "SampleHandler.swift";
+			"sourceTree" = "<group>";
+		};
+		"5771182D4C3258BB0A17DEAB" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "Wire.swift";
+			"sourceTree" = "<group>";
+		};
+		"F8B136C2FFBC6429D3F7E7FF" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "text.plist.xml";
+			"path" = "App-Info.plist";
+			"sourceTree" = "<group>";
+		};
+		"2392513E0B468581A543B710" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "text.plist.xml";
+			"path" = "Broadcast-Info.plist";
+			"sourceTree" = "<group>";
+		};
+		"B6CDB6E5D160E013280D3C68" = {
+			"isa" = "PBXFileReference";
+			"explicitFileType" = "wrapper.application";
+			"path" = "LyricBridge.app";
+			"sourceTree" = "BUILT_PRODUCTS_DIR";
+			"includeInIndex" = 0;
+		};
+		"78E7D2E4DBC136C6E993F86E" = {
+			"isa" = "PBXFileReference";
+			"explicitFileType" = "wrapper.app-extension";
+			"path" = "Broadcast.appex";
+			"sourceTree" = "BUILT_PRODUCTS_DIR";
+			"includeInIndex" = 0;
+		};
+		"00C45FD35CB0F9C5F764F070" = {
+			"isa" = "PBXGroup";
+			"children" = (
+				"B6CDB6E5D160E013280D3C68",
+				"78E7D2E4DBC136C6E993F86E",
+			);
+			"name" = "Products";
+			"sourceTree" = "<group>";
+		};
+		"1C48CE29E4E135EE62951B22" = {
+			"isa" = "PBXGroup";
+			"children" = (
+				"E75AFD248000B9E9C18788AB",
+				"F07B0458B2463B20CEA30D8A",
+				"284127A503893A2D7790E68D",
+			);
+			"path" = "App";
+			"sourceTree" = "<group>";
+		};
+		"88D78C9B53227866567C0017" = {
+			"isa" = "PBXGroup";
+			"children" = (
+				"F3F75BAFFF80937B3FE320AD",
+				"EC08AD8CA78005D126DB45B4",
+			);
+			"path" = "Broadcast";
+			"sourceTree" = "<group>";
+		};
+		"44C7E229889FE9D1BB841A79" = {
+			"isa" = "PBXGroup";
+			"children" = (
+				"5771182D4C3258BB0A17DEAB",
+			);
+			"path" = "Shared";
+			"sourceTree" = "<group>";
+		};
+		"5619E268CFFE28118C19FC6A" = {
+			"isa" = "PBXGroup";
+			"children" = (
+				"F8B136C2FFBC6429D3F7E7FF",
+				"2392513E0B468581A543B710",
+			);
+			"path" = "Config";
+			"sourceTree" = "<group>";
+		};
+		"ADCF10F76EBF2A74473E9DC4" = {
+			"isa" = "PBXGroup";
+			"children" = (
+				"1C48CE29E4E135EE62951B22",
+				"88D78C9B53227866567C0017",
+				"44C7E229889FE9D1BB841A79",
+				"5619E268CFFE28118C19FC6A",
+				"00C45FD35CB0F9C5F764F070",
+			);
+			"sourceTree" = "<group>";
+		};
+		"877A6BA951A2EA0025A2ABE8" = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"SDKROOT" = "iphoneos";
+				"IPHONEOS_DEPLOYMENT_TARGET" = "18.0";
+				"CLANG_ENABLE_MODULES" = "YES";
+				"CLANG_ENABLE_OBJC_ARC" = "YES";
+				"SWIFT_VERSION" = "5.0";
+				"SWIFT_STRICT_CONCURRENCY" = "minimal";
+				"TARGETED_DEVICE_FAMILY" = "2";
+				"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
+				"CODE_SIGN_STYLE" = "Automatic";
+				"CURRENT_PROJECT_VERSION" = "1";
+				"MARKETING_VERSION" = "0.1.0";
+				"SWIFT_OPTIMIZATION_LEVEL" = "-Onone";
+				"DEBUG_INFORMATION_FORMAT" = "dwarf";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "DEBUG $(inherited)";
+				"ENABLE_TESTABILITY" = "YES";
+			};
+			"name" = "Debug";
+		};
+		"959134B361DD7E21ADEA3164" = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"SDKROOT" = "iphoneos";
+				"IPHONEOS_DEPLOYMENT_TARGET" = "18.0";
+				"CLANG_ENABLE_MODULES" = "YES";
+				"CLANG_ENABLE_OBJC_ARC" = "YES";
+				"SWIFT_VERSION" = "5.0";
+				"SWIFT_STRICT_CONCURRENCY" = "minimal";
+				"TARGETED_DEVICE_FAMILY" = "2";
+				"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
+				"CODE_SIGN_STYLE" = "Automatic";
+				"CURRENT_PROJECT_VERSION" = "1";
+				"MARKETING_VERSION" = "0.1.0";
+				"SWIFT_OPTIMIZATION_LEVEL" = "-O";
+				"DEBUG_INFORMATION_FORMAT" = "dwarf-with-dsym";
+			};
+			"name" = "Release";
+		};
+		"247BF104A9AD002C539DA531" = {
+			"isa" = "XCConfigurationList";
+			"buildConfigurations" = (
+				"877A6BA951A2EA0025A2ABE8",
+				"959134B361DD7E21ADEA3164",
+			);
+			"defaultConfigurationIsVisible" = 0;
+			"defaultConfigurationName" = "Release";
+		};
+		"E9CE9E8D689FEDFA0B63C815" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "E75AFD248000B9E9C18788AB";
+		};
+		"A121D21A605385150202BEAB" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "F07B0458B2463B20CEA30D8A";
+		};
+		"8C041257C5F31A71BF7D8353" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "284127A503893A2D7790E68D";
+		};
+		"05AD0562299EECB2A98F74B2" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "5771182D4C3258BB0A17DEAB";
+		};
+		"3BE5C704148406E58FE0AB5F" = {
+			"isa" = "PBXSourcesBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+				"E9CE9E8D689FEDFA0B63C815",
+				"A121D21A605385150202BEAB",
+				"8C041257C5F31A71BF7D8353",
+				"05AD0562299EECB2A98F74B2",
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"5B9773D84493B3D713DB9AC0" = {
+			"isa" = "PBXFrameworksBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"B681E6ECC54B86FE775FEC3C" = {
+			"isa" = "PBXResourcesBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"EFC287BBDEAAB14D4FFECFE9" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "F3F75BAFFF80937B3FE320AD";
+		};
+		"3C1002973996AFC07418DDB9" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "EC08AD8CA78005D126DB45B4";
+		};
+		"3B4AF3E02569F21635C16907" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "5771182D4C3258BB0A17DEAB";
+		};
+		"3A503EB70345F00D16292631" = {
+			"isa" = "PBXSourcesBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+				"EFC287BBDEAAB14D4FFECFE9",
+				"3C1002973996AFC07418DDB9",
+				"3B4AF3E02569F21635C16907",
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"E1AA0DA84A812CBC05829580" = {
+			"isa" = "PBXFrameworksBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"342DAE0009B0D9BC35F39257" = {
+			"isa" = "PBXResourcesBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"69449AE6AA18D6F9D6DD7665" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "78E7D2E4DBC136C6E993F86E";
+			"settings" = {
+				"ATTRIBUTES" = (
+					"RemoveHeadersOnCopy",
+				);
+			};
+		};
+		"F0AB04EE052351C80F3286E9" = {
+			"isa" = "PBXCopyFilesBuildPhase";
+			"buildActionMask" = 2147483647;
+			"dstPath" = "";
+			"dstSubfolderSpec" = 13;
+			"files" = (
+				"69449AE6AA18D6F9D6DD7665",
+			);
+			"name" = "Embed App Extensions";
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"13F709DDC95BC0C19F9DE677" = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "app.lyricbridge.personal.broadcast";
+				"INFOPLIST_FILE" = "Config/Broadcast-Info.plist";
+				"GENERATE_INFOPLIST_FILE" = "NO";
+				"APPLICATION_EXTENSION_API_ONLY" = "YES";
+				"SKIP_INSTALL" = "YES";
+				"LD_RUNPATH_SEARCH_PATHS" = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+			};
+			"name" = "Debug";
+		};
+		"52B762698755D59978FBF15F" = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "app.lyricbridge.personal.broadcast";
+				"INFOPLIST_FILE" = "Config/Broadcast-Info.plist";
+				"GENERATE_INFOPLIST_FILE" = "NO";
+				"APPLICATION_EXTENSION_API_ONLY" = "YES";
+				"SKIP_INSTALL" = "YES";
+				"LD_RUNPATH_SEARCH_PATHS" = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+			};
+			"name" = "Release";
+		};
+		"EB3F975FD0CAA78E2E7BF26C" = {
+			"isa" = "XCConfigurationList";
+			"buildConfigurations" = (
+				"13F709DDC95BC0C19F9DE677",
+				"52B762698755D59978FBF15F",
+			);
+			"defaultConfigurationIsVisible" = 0;
+			"defaultConfigurationName" = "Release";
+		};
+		"8C3FDA28453C42FBA446FDCE" = {
+			"isa" = "PBXNativeTarget";
+			"buildConfigurationList" = "EB3F975FD0CAA78E2E7BF26C";
+			"buildPhases" = (
+				"3A503EB70345F00D16292631",
+				"E1AA0DA84A812CBC05829580",
+				"342DAE0009B0D9BC35F39257",
+			);
+			"buildRules" = (
+			);
+			"dependencies" = (
+			);
+			"name" = "Broadcast";
+			"productName" = "Broadcast";
+			"productReference" = "78E7D2E4DBC136C6E993F86E";
+			"productType" = "com.apple.product-type.app-extension";
+		};
+		"59882E9833F169D18FAA95C7" = {
+			"isa" = "PBXContainerItemProxy";
+			"containerPortal" = "98F54143AB4E86B28C3AFEE0";
+			"proxyType" = 1;
+			"remoteGlobalIDString" = "8C3FDA28453C42FBA446FDCE";
+			"remoteInfo" = "Broadcast";
+		};
+		"7245BC36CB5F32208E1A0C35" = {
+			"isa" = "PBXTargetDependency";
+			"target" = "8C3FDA28453C42FBA446FDCE";
+			"targetProxy" = "59882E9833F169D18FAA95C7";
+		};
+		"3CF6A4F2E05B3AAE7E2CBFEE" = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "app.lyricbridge.personal";
+				"INFOPLIST_FILE" = "Config/App-Info.plist";
+				"GENERATE_INFOPLIST_FILE" = "NO";
+				"LD_RUNPATH_SEARCH_PATHS" = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+			};
+			"name" = "Debug";
+		};
+		"23FB2CAEB38545C3793097DD" = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "app.lyricbridge.personal";
+				"INFOPLIST_FILE" = "Config/App-Info.plist";
+				"GENERATE_INFOPLIST_FILE" = "NO";
+				"LD_RUNPATH_SEARCH_PATHS" = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+			};
+			"name" = "Release";
+		};
+		"9EA62D25DFD1EFBA21F6DE7B" = {
+			"isa" = "XCConfigurationList";
+			"buildConfigurations" = (
+				"3CF6A4F2E05B3AAE7E2CBFEE",
+				"23FB2CAEB38545C3793097DD",
+			);
+			"defaultConfigurationIsVisible" = 0;
+			"defaultConfigurationName" = "Release";
+		};
+		"29C7B681C8D62CBAC94D51C0" = {
+			"isa" = "PBXNativeTarget";
+			"buildConfigurationList" = "9EA62D25DFD1EFBA21F6DE7B";
+			"buildPhases" = (
+				"3BE5C704148406E58FE0AB5F",
+				"5B9773D84493B3D713DB9AC0",
+				"B681E6ECC54B86FE775FEC3C",
+				"F0AB04EE052351C80F3286E9",
+			);
+			"buildRules" = (
+			);
+			"dependencies" = (
+				"7245BC36CB5F32208E1A0C35",
+			);
+			"name" = "LyricBridge";
+			"productName" = "LyricBridge";
+			"productReference" = "B6CDB6E5D160E013280D3C68";
+			"productType" = "com.apple.product-type.application";
+		};
+		"98F54143AB4E86B28C3AFEE0" = {
+			"isa" = "PBXProject";
+			"attributes" = {
+				"BuildIndependentTargetsInParallel" = "YES";
+				"LastUpgradeCheck" = "1600";
+				"TargetAttributes" = {
+					"29C7B681C8D62CBAC94D51C0" = {
+						"CreatedOnToolsVersion" = "16.0";
+						"ProvisioningStyle" = "Automatic";
+					};
+					"8C3FDA28453C42FBA446FDCE" = {
+						"CreatedOnToolsVersion" = "16.0";
+						"ProvisioningStyle" = "Automatic";
+					};
+				};
+			};
+			"buildConfigurationList" = "247BF104A9AD002C539DA531";
+			"compatibilityVersion" = "Xcode 14.0";
+			"developmentRegion" = "zh-Hans";
+			"hasScannedForEncodings" = 0;
+			"knownRegions" = (
+				"zh-Hans",
+				"en",
+				"Base",
+			);
+			"mainGroup" = "ADCF10F76EBF2A74473E9DC4";
+			"productRefGroup" = "00C45FD35CB0F9C5F764F070";
+			"projectDirPath" = "";
+			"projectRoot" = "";
+			"targets" = (
+				"29C7B681C8D62CBAC94D51C0",
+				"8C3FDA28453C42FBA446FDCE",
+			);
+		};
+	};
+	"rootObject" = "98F54143AB4E86B28C3AFEE0";
+}
