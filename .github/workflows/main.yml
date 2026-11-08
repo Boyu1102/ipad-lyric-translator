@@ -15,6 +15,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Arrange source files
+        run: |
+          set -euo pipefail
+          mkdir -p App Broadcast Shared
+          if [ -f LocalBridge.swift ]; then
+            cp LocalBridge.swift LyricBridgeApp.swift LyricModel.swift App/
+            cp CaptureLink.swift SampleHandler.swift Broadcast/
+            cp Wire.swift Shared/
+          fi
+
       - name: Install project generator
         run: brew install xcodegen
 
