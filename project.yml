@@ -28,6 +28,8 @@ targets:
       path: Generated/App-Info.plist
       properties:
         CFBundleDisplayName: 歌词译伴
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSScreenCaptureUsageDescription: 读取你允许的歌词画面，用于本机日语识别和翻译。
         UIBackgroundModes:
         - screen-capture
