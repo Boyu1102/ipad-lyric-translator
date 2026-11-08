@@ -3,164 +3,227 @@ import SwiftUI
 import Translation
 
 struct LyricRow: Identifiable {
-    let id: String
-    let original: String
+    let id: UUID
+    var original: String
     var translated: String?
     var error: String?
+    var attempts: Int = 0
 }
 
 @MainActor
 final class LyricModel: ObservableObject {
     @Published var rows: [LyricRow] = []
-    @Published var status = "请将音乐放在左边，本 App 放在右边"
-    @Published var translationStatus = "先启用翻译，按提示下载语言"
+    @Published var status = "音乐与译文并排打开，然后点击开始翻译"
+    @Published var translationStatus = "开始时会自动准备日语→中文翻译"
     @Published var configuration: TranslationSession.Configuration?
-    @Published var side = "left" { didSet { updateOptions() } }
-    @Published var fraction = 0.62 { didSet { updateOptions() } }
+    @Published var side: String { didSet { saveSettings() } }
+    @Published var fraction: Double { didSet { saveSettings() } }
+    @Published var selectionMode: String { didSet { saveSettings() } }
+    @Published var maxLines: Int { didSet { saveSettings() } }
     @Published var isReceiving = false
     @Published var translationReady = false
-    private let bridge = LocalBridge()
-    private var previous: [String] = []
-    private var lastPacket = Date.distantPast
-    private var acceptsPackets = true
+    @Published var wantsTranslation = false
+    private let capture = VisualCapture()
+    private var stabilizer = SentenceStabilizer()
+    private var lastFrame = Date.distantPast
+    private var acceptedAt = Date.distantPast
     private var watchdog: Task<Void, Never>?
-    private var historyVersion = UUID()
+    private var translationEpoch = UUID()
+    private var translationStarted: Date?
+    private var preparing = false
+    private var stalledRestarts = 0
+    private var cache: [String: String] = [:]
+    private var cacheOrder: [String] = []
+    private var historyEpoch = UUID()
 
     init() {
-        bridge.onPacket = { [weak self] packet in
-            Task { @MainActor in self?.receive(packet) }
+        let defaults = UserDefaults.standard
+        side = defaults.string(forKey: "musicSide.v2") ?? "right"
+        fraction = defaults.object(forKey: "musicWidth.v2") as? Double ?? 0.56
+        selectionMode = defaults.string(forKey: "lyricSelection.v2") ?? "highlight"
+        maxLines = defaults.object(forKey: "lyricLines.v2") as? Int ?? 3
+        capture.onPacket = { [weak self] in self?.receive($0) }
+        capture.onState = { [weak self] text, active in
+            guard let self else { return }
+            self.status = text
+            self.isReceiving = active
+            if active {
+                self.lastFrame = Date()
+                self.ensureTranslation()
+            }
         }
-        bridge.onError = { [weak self] error in
-            Task { @MainActor in self?.status = error }
-        }
-        bridge.start()
+        updateOptions()
         watchdog = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(2))
-                guard let self else { return }
-                if self.isReceiving && Date().timeIntervalSince(self.lastPacket) > 8 {
+                try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled, let self else { return }
+                if self.isReceiving && Date().timeIntervalSince(self.lastFrame) > 10 {
                     self.isReceiving = false
-                    self.status = "未收到新画面，请保持两个 App 并排并检查录屏状态"
+                    self.status = "暂时没有新画面，请检查系统屏幕读取状态或重新开始"
+                }
+                if let started = self.translationStarted,
+                   Date().timeIntervalSince(started) > 18, self.wantsTranslation {
+                    self.translationStarted = nil
+                    self.translationEpoch = UUID()
+                    self.translationReady = false
+                    self.preparing = false
+                    if self.stalledRestarts < 2 {
+                        self.stalledRestarts += 1
+                        self.translationStatus = "翻译响应较慢，正在重新连接（\(self.stalledRestarts)/2）"
+                        self.configuration?.invalidate()
+                    } else {
+                        self.stalledRestarts = 3
+                        self.configuration = nil
+                        self.translationStatus = "翻译暂时无响应，请点重新连接"
+                    }
                 }
             }
         }
     }
 
-    func enableTranslation() {
+    func start() {
+        wantsTranslation = true
+        updateOptions()
+        capture.start()
+    }
+
+    func stop() {
+        wantsTranslation = false
+        configuration = nil
+        translationEpoch = UUID()
+        translationStarted = nil
+        translationReady = false
+        preparing = false
+        stabilizer.reset()
+        Task { await capture.stop() }
+    }
+
+    func ensureTranslation() {
+        guard wantsTranslation, stalledRestarts < 3 else { return }
         if configuration == nil {
             configuration = .init(source: .init(identifier: "ja"), target: .init(identifier: "zh-Hans"))
-        } else {
-            configuration?.invalidate()
-        }
-    }
-
-    func armCapture() {
-        acceptsPackets = true
-        previous = []
-        updateOptions()
-        bridge.start()
-        status = "在系统弹窗中选择“歌词译伴识别”并开始直播"
-    }
-
-    func stopCapture() {
-        acceptsPackets = false
-        bridge.configure(CaptureOptions(side: side, fraction: fraction, stop: true))
-        isReceiving = false
-        status = "已请求停止识别；也可在控制中心停止录屏"
-    }
-
-    func clear() {
-        historyVersion = UUID()
-        rows = []
-        previous = []
+        } else if !translationReady && !preparing { configuration?.invalidate() }
     }
 
     func retryTranslation() {
+        wantsTranslation = true
+        stalledRestarts = 0
         for index in rows.indices where rows[index].translated == nil {
             rows[index].error = nil
+            rows[index].attempts = 0
         }
-        enableTranslation()
+        translationEpoch = UUID()
+        translationStarted = nil
+        translationReady = false
+        preparing = false
+        if configuration == nil { ensureTranslation() } else { configuration?.invalidate() }
+    }
+
+    func clear() {
+        historyEpoch = UUID()
+        rows = []
+        stabilizer.reset()
+    }
+
+    private func saveSettings() {
+        let defaults = UserDefaults.standard
+        defaults.set(side, forKey: "musicSide.v2")
+        defaults.set(fraction, forKey: "musicWidth.v2")
+        defaults.set(selectionMode, forKey: "lyricSelection.v2")
+        defaults.set(maxLines, forKey: "lyricLines.v2")
+        stabilizer.reset()
+        updateOptions()
     }
 
     private func updateOptions() {
-        previous = []
-        bridge.configure(CaptureOptions(side: side, fraction: fraction, stop: !acceptsPackets))
+        capture.configure(CaptureOptions(side: side, fraction: fraction,
+            selectionMode: selectionMode, maxLines: maxLines))
     }
 
     private func receive(_ packet: RecognitionPacket) {
-        guard acceptsPackets else { return }
-        lastPacket = Date()
-        isReceiving = packet.status == "capturing"
+        guard wantsTranslation else { return }
+        lastFrame = Date()
+        isReceiving = true
         if let error = packet.error { status = error; return }
-        if packet.status == "stopped" {
-            isReceiving = false
-            status = "识别已停止"
-            previous = []
+        let sentence = packet.lines.first ?? ""
+        status = sentence.isEmpty ? "等待当前歌词变亮" : "正在确认完整歌词"
+        guard let stable = stabilizer.observe(sentence, at: ProcessInfo.processInfo.systemUptime) else { return }
+        status = "正在翻译整句歌词"
+        let key = SentenceSelector.normalize(stable)
+        if let last = rows.last, Date().timeIntervalSince(acceptedAt) < 3,
+           min(last.original.count, stable.count) >= 4,
+           (key.hasPrefix(SentenceSelector.normalize(last.original)) ||
+            SentenceSelector.normalize(last.original).hasPrefix(key)) {
+            guard stable.count > last.original.count else { return }
+            rows[rows.count - 1].original = stable
+            rows[rows.count - 1].translated = cache[key]
+            rows[rows.count - 1].error = nil
+            rows[rows.count - 1].attempts = 0
+        } else if let last = rows.last, SentenceSelector.normalize(last.original) == key {
             return
+        } else {
+            rows.append(LyricRow(id: UUID(), original: stable, translated: cache[key]))
         }
-        if packet.status == "paused" {
-            status = "识别已暂停，请在系统录屏控制中恢复"
-            previous = []
-            return
-        }
-        let lines = packet.lines.map {
-            $0.trimmingCharacters(in: .whitespacesAndNewlines)
-        }.filter { !$0.isEmpty }
-        status = lines.isEmpty ? "已连接，等待歌词；没有文字时请调整识别区域" : "正在识别歌词"
-        // Require the same line in two successive captures to reject scrolling transitions.
-        let stable = lines.filter { previous.contains($0) }
-        previous = lines
-        for line in stable where !rows.contains(where: { $0.id == line }) {
-            rows.append(LyricRow(id: line, original: line))
-        }
-        if rows.count > 80 { rows.removeFirst(rows.count - 80) }
+        acceptedAt = Date()
+        if rows.count > 40 { rows.removeFirst(rows.count - 40) }
+        ensureTranslation()
     }
 
     func translate(using session: TranslationSession) async {
+        let epoch = UUID()
+        translationEpoch = epoch
+        preparing = true
         translationReady = false
-        translationStatus = "正在准备日语→简体中文翻译"
+        translationStatus = "正在准备日语→中文；首次使用请确认语言下载"
+        defer {
+            if epoch == translationEpoch {
+                preparing = false
+                translationReady = false
+                translationStarted = nil
+            }
+        }
         do {
             try await session.prepareTranslation()
             try Task.checkCancellation()
+            guard epoch == translationEpoch else { return }
+            preparing = false
             translationReady = true
             translationStatus = "日语→中文已就绪"
-            while !Task.isCancelled {
-                let pending = rows.filter { $0.translated == nil && $0.error == nil }.prefix(8)
-                if pending.isEmpty {
-                    try await Task.sleep(for: .milliseconds(400))
-                    continue
+            while !Task.isCancelled, epoch == translationEpoch {
+                guard let row = rows.reversed().first(where: { $0.translated == nil && $0.error == nil }) else {
+                    try await Task.sleep(for: .milliseconds(250)); continue
                 }
-                let version = historyVersion
-                let requests = pending.map {
-                    TranslationSession.Request(sourceText: $0.original, clientIdentifier: $0.id)
-                }
+                let version = historyEpoch
+                translationStarted = Date()
                 do {
-                    let responses = try await session.translations(from: requests)
+                    let response = try await session.translate(row.original)
                     try Task.checkCancellation()
-                    guard version == historyVersion else { continue }
-                    for response in responses {
-                        if let id = response.clientIdentifier,
-                           let index = rows.firstIndex(where: { $0.id == id }) {
-                            rows[index].translated = response.targetText
-                        }
-                    }
-                } catch is CancellationError { throw CancellationError() }
-                catch {
+                    guard epoch == translationEpoch else { return }
+                    translationStarted = nil
+                    guard version == historyEpoch,
+                          let index = rows.firstIndex(where: { $0.id == row.id && $0.original == row.original }) else { continue }
+                    rows[index].translated = response.targetText
+                    let key = SentenceSelector.normalize(row.original)
+                    if cache[key] == nil { cacheOrder.append(key) }
+                    cache[key] = response.targetText
+                    if cacheOrder.count > 200 { cache.removeValue(forKey: cacheOrder.removeFirst()) }
+                    stalledRestarts = 0
+                    translationStatus = "日语→中文已就绪"
+                } catch {
                     try Task.checkCancellation()
-                    guard version == historyVersion else { continue }
-                    for row in pending {
-                        if let index = rows.firstIndex(where: { $0.id == row.id }) {
-                            rows[index].error = "翻译失败，点击“重试翻译”"
-                        }
+                    guard epoch == translationEpoch else { return }
+                    translationStarted = nil
+                    if version == historyEpoch, let index = rows.firstIndex(where: { $0.id == row.id && $0.original == row.original }) {
+                        rows[index].attempts += 1
+                        if rows[index].attempts >= 2 { rows[index].error = "本句暂时无法翻译，点重新连接可重试" }
                     }
                     translationStatus = "翻译暂时失败：\(error.localizedDescription)"
+                    try await Task.sleep(for: .seconds(1))
                 }
             }
         } catch is CancellationError {
-            translationReady = false
         } catch {
-            translationReady = false
-            translationStatus = "无法启用翻译：\(error.localizedDescription)"
+            if epoch == translationEpoch { translationStatus = "翻译未就绪：\(error.localizedDescription)" }
         }
     }
 }

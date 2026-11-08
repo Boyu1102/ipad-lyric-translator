@@ -2,19 +2,25 @@ name: LyricBridge
 options:
   bundleIdPrefix: app.lyricbridge
   deploymentTarget:
-    iOS: '18.0'
+    iOS: '27.0'
 settings:
   base:
     SWIFT_VERSION: '5.0'
     TARGETED_DEVICE_FAMILY: '2'
-    CURRENT_PROJECT_VERSION: '1'
-    MARKETING_VERSION: '0.1.0'
+    CURRENT_PROJECT_VERSION: '2'
+    MARKETING_VERSION: 0.2.0
     CODE_SIGN_STYLE: Automatic
 targets:
   LyricBridge:
     type: application
     platform: iOS
-    sources: [App, Shared]
+    sources:
+    - LyricBridgeApp.swift
+    - LyricModel.swift
+    - VisualCapture.swift
+    - Wire.swift
+    - SentenceSelection.swift
+    - FrameProcessor.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.lyricbridge.personal
@@ -22,35 +28,22 @@ targets:
       path: Generated/App-Info.plist
       properties:
         CFBundleDisplayName: 歌词译伴
+        NSScreenCaptureUsageDescription: 读取你允许的歌词画面，用于本机日语识别和翻译。
+        UIBackgroundModes:
+        - screen-capture
         UILaunchScreen: {}
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
         UIApplicationSupportsIndirectInputEvents: true
         UISupportedInterfaceOrientations~ipad:
-          - UIInterfaceOrientationPortrait
-          - UIInterfaceOrientationPortraitUpsideDown
-          - UIInterfaceOrientationLandscapeLeft
-          - UIInterfaceOrientationLandscapeRight
-    dependencies:
-      - target: Broadcast
-  Broadcast:
-    type: app-extension
-    platform: iOS
-    sources: [Broadcast, Shared]
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: app.lyricbridge.personal.broadcast
-        APPLICATION_EXTENSION_API_ONLY: true
-        SKIP_INSTALL: true
-    info:
-      path: Generated/Broadcast-Info.plist
+        - UIInterfaceOrientationPortrait
+        - UIInterfaceOrientationPortraitUpsideDown
+        - UIInterfaceOrientationLandscapeLeft
+        - UIInterfaceOrientationLandscapeRight
+    entitlements:
+      path: Generated/LyricBridge.entitlements
       properties:
-        CFBundleDisplayName: 歌词译伴识别
-        NSExtension:
-          NSExtensionPointIdentifier: com.apple.broadcast-services-upload
-          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).SampleHandler
-          NSExtensionAttributes:
-            RPBroadcastProcessMode: RPBroadcastProcessModeSampleBuffer
+        com.apple.developer.screen-recording: true
 schemes:
   LyricBridge:
     build:

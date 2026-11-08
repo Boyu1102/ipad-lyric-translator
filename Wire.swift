@@ -12,8 +12,12 @@ enum Wire {
 }
 
 struct CaptureOptions: Codable {
-    var side: String = "left"
-    var fraction: Double = 0.62
+    var side: String = "right"
+    var fraction: Double = 0.56
+    var top: Double = 0.20
+    var bottom: Double = 0.90
+    var selectionMode: String = "highlight"
+    var maxLines: Int = 3
     var stop: Bool = false
 }
 

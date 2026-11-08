@@ -1,50 +1,41 @@
 name: Build iPad app
-
 on:
   workflow_dispatch:
   push:
     branches: [main]
-
 permissions:
   contents: read
-
 jobs:
   build:
-    runs-on: macos-15
-    timeout-minutes: 20
+    runs-on: xcode-27
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-
-      - name: Arrange source files
+      - name: Verify sentence selection
         run: |
           set -euo pipefail
-          mkdir -p App Broadcast Shared
-          if [ -f LocalBridge.swift ]; then
-            cp LocalBridge.swift LyricBridgeApp.swift LyricModel.swift App/
-            cp CaptureLink.swift SampleHandler.swift Broadcast/
-            cp Wire.swift Shared/
+          if [ -f Shared/SentenceSelection.swift ]; then
+            swiftc Shared/SentenceSelection.swift Tests/main.swift -o /tmp/lyric-tests
+          else
+            swiftc SentenceSelection.swift main.swift -o /tmp/lyric-tests
           fi
-
+          /tmp/lyric-tests
       - name: Install project generator
         run: brew install xcodegen
-
       - name: Build app
         run: |
           set -euo pipefail
+          xcodebuild -version
           xcodegen generate
-          xcodebuild -project LyricBridge.xcodeproj \
-            -scheme LyricBridge \
-            -configuration Release \
-            -destination 'generic/platform=iOS' \
-            -derivedDataPath build \
-            CODE_SIGNING_ALLOWED=NO build
+          xcodebuild -project LyricBridge.xcodeproj -scheme LyricBridge \
+            -configuration Release -destination 'generic/platform=iOS' \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
           mkdir -p package/Payload
           cp -R build/Build/Products/Release-iphoneos/LyricBridge.app package/Payload/
           cd package
           zip -qry ../LyricBridge-unsigned.ipa Payload
-
       - uses: actions/upload-artifact@v4
         with:
-          name: LyricBridge-unsigned
+          name: LyricBridge-v2-visual
           path: LyricBridge-unsigned.ipa
           retention-days: 7
