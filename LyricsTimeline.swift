@@ -1,4 +1,42 @@
 import Foundation
+import NaturalLanguage
+
+enum LyricLanguage: String, CaseIterable, Identifiable {
+    case japanese = "ja", english = "en", romanized, unknown
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .japanese: return "日语"
+        case .english: return "英语"
+        case .romanized: return "罗马音"
+        case .unknown: return "未识别语言"
+        }
+    }
+    static func detect(_ text: String) -> LyricLanguage {
+        let letters = text.unicodeScalars.filter { CharacterSet.letters.contains($0) }
+        let japanese = letters.filter { (0x3040...0x30FF).contains($0.value) || (0xFF66...0xFF9F).contains($0.value) || (0x4E00...0x9FFF).contains($0.value) }.count
+        let kana = letters.filter { (0x3040...0x30FF).contains($0.value) || (0xFF66...0xFF9F).contains($0.value) }.count
+        // A few kana in an otherwise romanized song do not make it Japanese original text.
+        if kana > 0 && Double(japanese) / Double(max(1, letters.count)) >= 0.12 { return .japanese }
+        if kana > 0 { return .romanized }
+        let words = text.lowercased().components(separatedBy: CharacterSet.letters.inverted).filter { !$0.isEmpty }
+        let markers: Set<String> = ["wa", "wo", "ga", "ni", "desu", "masu", "kimi", "boku", "watashi", "anata", "kokoro", "sekai", "kedo", "shite", "sore", "kore", "koto", "kara", "nani", "iru", "naru", "yume"]
+        let matches = words.filter { markers.contains($0) }.count
+        if matches >= 3 && Double(matches) / Double(max(1, words.count)) >= 0.10 { return .romanized }
+        let recognizer = NLLanguageRecognizer()
+        recognizer.processString(text)
+        return recognizer.dominantLanguage == .english ? .english : .unknown
+    }
+}
+
+enum TranslationTarget: String, CaseIterable, Identifiable {
+    case chinese = "zh-Hans", english = "en"
+    var id: String { rawValue }
+    var label: String { self == .chinese ? "中文" : "English" }
+    static func cacheKey(source: String, target: String, text: String) -> String {
+        source + "|" + target + "|" + text
+    }
+}
 
 struct MusicTrack: Equatable, Sendable {
     var title: String
@@ -6,6 +44,7 @@ struct MusicTrack: Equatable, Sendable {
     var album: String
     var duration: Double
     var storeID: String = ""
+    var libraryLyrics: String? = nil
     var key: String {
         [storeID, title, artist, album, String(duration.isFinite ? Int(min(864000, max(0, duration)).rounded()) : 0)].joined(separator: "|")
     }
@@ -22,6 +61,7 @@ struct LyricsDocument: Sendable {
     var isTimed: Bool
     var source: String
     var instrumental: Bool = false
+    var language: LyricLanguage { LyricLanguage.detect(cues.map(\.text).joined(separator: "\n")) }
 
     func index(at playbackTime: Double, offset: Double = 0) -> Int? {
         guard isTimed, playbackTime.isFinite else { return nil }
@@ -102,15 +142,16 @@ struct LyricsRecord: Decodable, Identifiable, Sendable {
     let plainLyrics: String?
     let syncedLyrics: String?
 
-    var hasSyncedLyrics: Bool { !(syncedLyrics?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true) }
+    private var usesPlainOriginal: Bool {
+        LyricLanguage.detect(plainLyrics ?? "") == .japanese && LyricLanguage.detect(syncedLyrics ?? "") != .japanese
+    }
+    var hasSyncedLyrics: Bool { !usesPlainOriginal && !(syncedLyrics?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true) }
     var hasLyrics: Bool { instrumental || hasSyncedLyrics || !(plainLyrics?.isEmpty ?? true) }
     var likelyJapanese: Bool {
         if instrumental { return true }
-        let text = hasSyncedLyrics ? (syncedLyrics ?? "") : (plainLyrics ?? "")
-        return text.unicodeScalars.contains {
-            (0x3040...0x30FF).contains($0.value) || (0xFF66...0xFF9F).contains($0.value)
-        }
+        return language == .japanese
     }
+    var language: LyricLanguage { LyricLanguage.detect(hasSyncedLyrics ? (syncedLyrics ?? "") : (plainLyrics ?? "")) }
     var document: LyricsDocument {
         if instrumental { return LyricsDocument(cues: [], isTimed: true, source: "LRCLIB", instrumental: true) }
         let raw = hasSyncedLyrics ? syncedLyrics! : (plainLyrics ?? "")
@@ -124,8 +165,11 @@ enum LyricsMatcher {
             .unicodeScalars.filter { CharacterSet.alphanumerics.contains($0) }.map(String.init).joined()
     }
 
-    static func score(_ record: LyricsRecord, for track: MusicTrack) -> Double? {
-        guard record.hasLyrics, record.likelyJapanese else { return nil }
+    static func score(_ record: LyricsRecord, for track: MusicTrack, japaneseOnly: Bool = true) -> Double? {
+        guard record.hasLyrics else { return nil }
+        if !record.instrumental {
+            guard record.language == .japanese || (!japaneseOnly && record.language == .english) else { return nil }
+        }
         let title = normalized(track.title), otherTitle = normalized(record.trackName)
         let artist = normalized(track.artist), otherArtist = normalized(record.artistName)
         guard !title.isEmpty, !artist.isEmpty,
@@ -133,7 +177,7 @@ enum LyricsMatcher {
               artist == otherArtist || (artist.count >= 4 && otherArtist.contains(artist)) else { return nil }
         let requestedVersion = normalized(track.title + " " + track.album)
         let suppliedVersion = normalized(record.trackName + " " + record.albumName)
-        for marker in ["live", "ライブ", "ライヴ", "remix", "リミックス", "karaoke", "カラオケ", "acoustic", "アコースティック"] {
+        for marker in ["live", "ライブ", "ライヴ", "remix", "リミックス", "karaoke", "カラオケ", "acoustic", "アコースティック", "piano", "ピアノ", "instrumental", "gamever", "tvsize"] {
             if requestedVersion.contains(marker) != suppliedVersion.contains(marker) { return nil }
         }
         let difference = abs(record.duration - track.duration)
@@ -146,16 +190,33 @@ enum LyricsMatcher {
         return score
     }
 
-    static func best(_ records: [LyricsRecord], for track: MusicTrack) -> LyricsRecord? {
+    static func best(_ records: [LyricsRecord], for track: MusicTrack, japaneseOnly: Bool = true) -> LyricsRecord? {
         var selected: LyricsRecord?
         var highest = -Double.infinity
         for record in records {
-            guard let value = score(record, for: track) else { continue }
+            guard let value = score(record, for: track, japaneseOnly: japaneseOnly) else { continue }
             if value > highest || (value == highest && record.id < (selected?.id ?? Int.max)) {
                 selected = record
                 highest = value
             }
         }
         return selected
+    }
+}
+
+struct CatalogSong: Decodable {
+    var trackId: Int
+    var trackName: String
+    var artistName: String
+    var collectionName: String?
+    var trackTimeMillis: Double?
+    var track: MusicTrack {
+        MusicTrack(title: trackName, artist: artistName, album: collectionName ?? "",
+            duration: (trackTimeMillis ?? 0) / 1000, storeID: String(trackId))
+    }
+    func matches(_ requested: MusicTrack) -> Bool {
+        LyricsMatcher.normalized(trackName) == LyricsMatcher.normalized(requested.title) &&
+        LyricsMatcher.normalized(artistName) == LyricsMatcher.normalized(requested.artist) &&
+        (requested.duration <= 0 || abs(track.duration - requested.duration) <= 3)
     }
 }

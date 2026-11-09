@@ -16,6 +16,8 @@ final class MusicMonitor {
     private var lastTrackKey: String?
     private var progressedAt = Date()
     private var generatingNotifications = false
+    private var libraryLyricsKey: String?
+    private var libraryLyrics: String?
 
     func start() async -> Bool {
         var authorization = MPMediaLibrary.authorizationStatus()
@@ -58,9 +60,15 @@ final class MusicMonitor {
         guard let player else { return }
         let track: MusicTrack?
         if let item = player.nowPlayingItem, let title = item.title, !title.isEmpty {
-            track = MusicTrack(title: title, artist: item.artist ?? "", album: item.albumTitle ?? "",
+            var current = MusicTrack(title: title, artist: item.artist ?? "", album: item.albumTitle ?? "",
                 duration: item.playbackDuration.isFinite ? max(0, item.playbackDuration) : 0,
                 storeID: item.value(forProperty: MPMediaItemPropertyPlaybackStoreID) as? String ?? "")
+            if libraryLyricsKey != current.key {
+                libraryLyricsKey = current.key
+                libraryLyrics = item.lyrics
+            }
+            current.libraryLyrics = libraryLyrics
+            track = current
         } else { track = nil }
         let time = player.currentPlaybackTime
         let playing = player.playbackState == .playing

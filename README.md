@@ -1,42 +1,43 @@
-# 歌词译伴 · 不读屏版 0.3
+# 歌词译伴 0.4
 
-为 Apple Music 提供日语歌词中文翻译。最低 iPadOS 18，使用系统 Translation 框架。
-
-## 这次改变了什么
-
-0.1 和 0.2 的读屏路径在实际设备上影响了 Music 的声音，并出现误识别自身界面、错选歌词和追踪停滞。0.3 不再编译或启动任何屏幕捕获功能，不使用麦克风、不修改 Music 音量或播放队列，不需要分屏或左右区域设置。
-
-本版通过 `MPMusicPlayerController.systemMusicPlayer` 读取 Music 当前曲目、播放状态和进度，用 LRCLIB 的 LRC 时间轴选择整句歌词，交由设备上的 Translation 框架翻译。歌词来源不是 Apple Music 的屏幕或非公开歌词接口。
+跟随 Apple Music 当前播放进度，显示整句原词及中文／英文译文。支持日语→中文、日语→英文、英语→中文；最低 iPadOS 18。
 
 ## 使用
 
-1. 先结束旧版仍在运行的屏幕共享/录屏，确认 Apple Music 恢复正常声音。
-2. 安装 0.3，先在 Music 播放歌曲，再点本 App 的“连接 Apple Music”。首次按提示允许“媒体与 Apple Music”访问。
-3. 本 App 自动匹配歌名、歌手、专辑和时长，并跟随播放时间。Music 可以在后台；本 App 可以全屏。
-4. 歌词有时间偏差时，展开“歌词来源与同步”，调整提前或延后 0.5 秒。
-5. 没有可靠匹配时选择正确版本，或手动找歌、导入自己的 LRC/TXT。无时间轴歌词或 Music 没提供播放时间时会明确提示手动切句，不伪造自动同步。
+1. 用同一 Apple ID 签名覆盖安装，先在 Apple Music 播放歌曲，再点“连接 Apple Music”。
+2. 首次允许“媒体与 Apple Music”访问，按提示下载系统翻译语言。Music 可在后台播放，不必分屏。
+3. “译文”切换中文／English。原文自动识别日语和英语，也可在“歌词与设置”指定。
+4. 同步有偏差时，可按 0.5 秒调整；没有时间轴时可手动切句。
+5. 找不到歌词时可手动找歌或导入自己的 LRC/TXT。导入 LRC 可同步，TXT 只能手动切句。
 
-联网查找仅把歌名、歌手、专辑和时长发给 LRCLIB，不传输屏幕、音乐音频、Apple 账号或音乐库清单。服务请求顺序执行、缓存匹配，并遵守 Retry-After。翻译在设备上进行。
+## 本版变化
 
-## 验证和限制
+- 增加英文译文和英文歌曲的中文翻译。切换语言时清除当前译文，并按原文语言、译文语言隔离缓存，避免串语言。
+- 英文／罗马音歌名未找到合适原词时，通过 Apple 公开目录的歌曲编号查找同一首歌的日文名称，再查歌词。无编号时先核对英文名称、歌手和时长，避免把同名歌曲当作别名。
+- 日文原词优先；少量假名混在大量罗马音中时，不再误判为日文原词。不把罗马音原样重复显示为译文，也不凭空还原汉字。
+- 同一记录仅有罗马音同步词、但有日文普通词时，使用日文普通词并明确提示手动切句，不编造时间轴。
+- 若公开媒体资料中提供了歌词，可在公共同步歌词缺失时使用该内容。该属性不保证包含 Apple Music 显示的授权歌词。
+- 页面聚焦歌曲、当前整句、译文语言和下两句；高级操作收进折叠设置，支持系统深色模式。
 
-- 自动测试覆盖 LRC 多时间标签、小数与 offset、同时间多行、间奏空行、前奏、向前/向后拖动、整句文本和歌曲版本匹配。
-- 构建检查安装包版本、Music 权限声明，并检查未链接 ScreenCaptureKit / ReplayKit。
-- 当前设备的 Music 是否返回曲目和进度，以及真实系统翻译的表现，仍需真机验证；编译和单元测试不能证明这些已经可用。
-- 歌词服务不保证覆盖全部歌曲或版本，时间轴可能与 Music 有偏差。没有时间轴时只支持手动切句。
-- 歌词解释及诗性表达仍受系统翻译质量限制；本版主要消除 OCR 造成的残缺、混行和自我识别。
-- App 前台可见时跟随；锁屏或 App 被系统挂起时不承诺继续运行，回到前台后重新读取 Music 当前时间。
+## 原理与限制
 
-## 打包
+保留用户在 0.3 真机验证可用的方案：只读取 `MPMusicPlayerController.systemMusicPlayer` 的当前曲目、播放状态和进度，以 LRCLIB 的时间轴跟随整句。不启动屏幕捕获，不使用麦克风，不建立音频会话，不更改 Music 音量、队列或播放状态。旧版捕获源文件不编译进应用。
 
-Actions → **Build iPad app**。成功后下载 **LyricBridge-v3-music**。该文件包含未签名 IPA，可使用自己的个人开发签名安装。生成 App 的版本为 0.3.0、构建号 3。
+联网时，只向 LRCLIB 及 Apple 公开目录发送当前曲目名称、歌手、专辑、时长或歌曲编号，不传输屏幕、音乐音频、账号或音乐库清单。歌词请求顺序执行、缓存结果，并遵守 Retry-After。系统翻译在设备上完成。
 
-源文件由 `project.yml` 明确指定。根目录保留的旧版 OCR/捕获源文件和旧说明不编译进 0.3；其历史可用于回溯，但不代表本版功能。
+公共歌词库与 Apple Music 的授权歌词覆盖不同，Apple Music 有词不代表本 App 一定能获取。没有可靠原词或时间轴时会提示，不伪造同步。系统翻译对诗性表达和口语仍可能不准确。App 回到前台后重新读取播放时间，不承诺锁屏或被系统挂起后继续运行。
 
-## 官方依据和服务文档
+实查示例：“I am...”／Atarayo 对应「僕は...」，“Polar night”对应“極夜”，日文名称可找到日文同步歌词。“To the Beyond, from a Nameless Shore”对应“彼方へ、名もなき海辺より”，此次在公共歌词库中仍未查到。这是当前查询结果，并非永久覆盖保证。
 
-- [苹果 systemMusicPlayer](https://developer.apple.com/documentation/mediaplayer/mpmusicplayercontroller/systemmusicplayer)
-- [苹果 nowPlayingItem](https://developer.apple.com/documentation/mediaplayer/mpmusicplayercontroller/nowplayingitem)
-- [苹果播放时间接口](https://developer.apple.com/documentation/mediaplayer/mpmediaplayback)
-- [苹果 Media Player 权限说明](https://developer.apple.com/documentation/mediaplayer)
+## 验证与打包
+
+Actions → **Build iPad app**，成功后下载 **LyricBridge-v4-languages**，内含未签名 IPA。版本 0.4.0，构建号 4，保持原应用编号，可使用自己的个人签名覆盖安装。
+
+自动检查覆盖时间轴前进／后退／间奏、整句合并、日文原词与混合罗马音、英文来源、语言缓存隔离、歌曲版本及目录别名匹配，并用模拟 HTTP 响应检查有／无歌曲编号的完整查找路径。构建还检查未链接 ScreenCaptureKit / ReplayKit，未声明屏幕捕获权限。新语言的系统下载、翻译质量及实际歌曲覆盖仍需真机体验确认。
+
+## 官方资料
+
+- [Apple systemMusicPlayer](https://developer.apple.com/documentation/mediaplayer/mpmusicplayercontroller/systemmusicplayer)
+- [Apple 媒体项目歌词属性](https://developer.apple.com/documentation/mediaplayer/mpmediaitem/lyrics)
+- [Apple 公开目录搜索与编号查询](https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/iTuneSearchAPI/)
 - [LRCLIB API](https://lrclib.net/docs)

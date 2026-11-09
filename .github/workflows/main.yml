@@ -14,7 +14,7 @@ jobs:
       - name: Verify lyrics timeline and song matching
         run: |
           set -euo pipefail
-          swiftc LyricsTimeline.swift main.swift -o /tmp/lyric-tests
+          swiftc LyricsTimeline.swift LyricsService.swift main.swift -o /tmp/lyric-tests
           /tmp/lyric-tests
       - name: Install project generator
         run: brew install xcodegen
@@ -31,7 +31,7 @@ jobs:
           import pathlib, plistlib
           app = pathlib.Path('build/Build/Products/Release-iphoneos/LyricBridge.app')
           info = plistlib.loads((app / 'Info.plist').read_bytes())
-          assert info['CFBundleShortVersionString'] == '0.3.0'
+          assert info['CFBundleShortVersionString'] == '0.4.0'
           assert 'NSAppleMusicUsageDescription' in info
           assert 'NSScreenCaptureUsageDescription' not in info
           assert 'screen-capture' not in info.get('UIBackgroundModes', [])
@@ -45,6 +45,6 @@ jobs:
           zip -qry ../LyricBridge-unsigned.ipa Payload
       - uses: actions/upload-artifact@v4
         with:
-          name: LyricBridge-v3-music
+          name: LyricBridge-v4-languages
           path: LyricBridge-unsigned.ipa
           retention-days: 7

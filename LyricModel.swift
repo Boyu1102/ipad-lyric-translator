@@ -19,6 +19,17 @@ final class LyricModel: ObservableObject {
     @Published private(set) var status = "先在 Apple Music 播放歌曲，再点连接"
     @Published private(set) var translationStatus = "不需要共享屏幕、录音或分屏"
     @Published var configuration: TranslationSession.Configuration?
+    @Published var target = TranslationTarget(rawValue: UserDefaults.standard.string(forKey: "translationTarget.v4") ?? "") ?? .chinese {
+        didSet {
+            guard target != oldValue else { return }
+            UserDefaults.standard.set(target.rawValue, forKey: "translationTarget.v4")
+            restartForLanguageChange()
+        }
+    }
+    @Published var sourceOverride = "auto" {
+        didSet { if sourceOverride != oldValue { restartForLanguageChange() } }
+    }
+    @Published private(set) var detectedLanguage: LyricLanguage = .unknown
     @Published var offset: Double = 0 { didSet { updateIndex(); saveOffset() } }
     private let monitor = MusicMonitor()
     private let service = LyricsService()
@@ -38,13 +49,25 @@ final class LyricModel: ObservableObject {
     private var manualCursor = 0
     private var manualTrackPinned = false
     private var lastObservedTrackKey: String?
+    private var activePair: String?
+
+    var sourceLanguage: LyricLanguage { LyricLanguage(rawValue: sourceOverride) ?? detectedLanguage }
+    var translationDirection: String { sourceLanguage.label + " → " + target.label }
 
     var currentCue: LyricCue? {
         guard let document, let index = currentIndex, document.cues.indices.contains(index) else { return nil }
         return document.cues[index]
     }
-    var currentTranslation: String? { currentIndex.flatMap { translations[$0] } }
-    var currentError: String? { currentIndex.flatMap { translationErrors[$0] } }
+    var currentTranslation: String? {
+        if sourceLanguage.rawValue == target.rawValue { return currentCue?.text }
+        return currentIndex.flatMap { translations[$0] }
+    }
+    var currentError: String? {
+        if document != nil && sourceLanguage != .japanese && sourceLanguage != .english {
+            return "请在“歌词与设置”中指定原文语言，或导入日文／英文原词"
+        }
+        return currentIndex.flatMap { translationErrors[$0] }
+    }
     var upcoming: [LyricCue] {
         guard let document else { return [] }
         let start = min(document.cues.count, max(0, (currentIndex ?? -1) + 1))
@@ -103,6 +126,7 @@ final class LyricModel: ObservableObject {
         fetching = false
         wantsTranslation = false
         configuration = nil
+        activePair = nil
         translationEpoch = UUID()
         translationStarted = nil
         translationReady = false
@@ -148,6 +172,7 @@ final class LyricModel: ObservableObject {
     private func adopt(_ newTrack: MusicTrack) {
         track = newTrack
         resetDocument()
+        sourceOverride = "auto"
         let saved = UserDefaults.standard.dictionary(forKey: "lyricsOffsets.v3") as? [String: Double]
         offset = saved?[newTrack.key] ?? 0
         lookup(newTrack)
@@ -162,6 +187,7 @@ final class LyricModel: ObservableObject {
         translationErrors = [:]
         translationAttempts = [:]
         alternatives = []
+        detectedLanguage = .unknown
     }
 
     func searchManually(title: String, artist: String, duration: Double) {
@@ -190,6 +216,7 @@ final class LyricModel: ObservableObject {
                 guard let self, epoch == self.lookupEpoch else { return }
                 self.fetching = false
                 if let selected = result.selected { self.choose(selected) }
+                else if let fallback = result.fallback { self.install(fallback) }
                 else {
                     self.alternatives = result.alternatives
                     self.status = "没有足够可靠的自动匹配，请选择正确的歌曲版本"
@@ -204,6 +231,10 @@ final class LyricModel: ObservableObject {
     }
 
     func choose(_ record: LyricsRecord) {
+        guard record.instrumental || record.language == .japanese || record.language == .english else {
+            status = "这个版本只有罗马音或语言不明，不能可靠翻译；请换日文原词或导入歌词"
+            return
+        }
         install(record.document)
     }
 
@@ -230,6 +261,7 @@ final class LyricModel: ObservableObject {
     private func install(_ newDocument: LyricsDocument) {
         documentEpoch = UUID()
         document = newDocument
+        detectedLanguage = newDocument.language
         manualCursor = 0
         translations = [:]
         translationErrors = [:]
@@ -264,9 +296,50 @@ final class LyricModel: ObservableObject {
 
     private func ensureTranslation() {
         guard wantsTranslation, stalledRestarts <= 2 else { return }
+        guard document != nil, document?.instrumental != true else { return }
+        guard sourceLanguage == .japanese || sourceLanguage == .english else {
+            translationEpoch = UUID()
+            translationStarted = nil
+            configuration = nil
+            activePair = nil
+            translationStatus = "未识别出日文或英文原词；可在设置中指定原文语言，或换歌词版本"
+            return
+        }
+        if sourceLanguage.rawValue == target.rawValue {
+            translationEpoch = UUID()
+            translationStarted = nil
+            configuration = nil
+            activePair = nil
+            translationStatus = "原文已是英语；切换“中文”可查看译文"
+            return
+        }
+        let pair = sourceLanguage.rawValue + "|" + target.rawValue
+        if activePair != pair {
+            translationEpoch = UUID()
+            translationReady = false
+            preparingTranslation = false
+            translationStarted = nil
+            activePair = pair
+            configuration = .init(source: .init(identifier: sourceLanguage.rawValue), target: .init(identifier: target.rawValue))
+            return
+        }
         if configuration == nil {
-            configuration = .init(source: .init(identifier: "ja"), target: .init(identifier: "zh-Hans"))
+            configuration = .init(source: .init(identifier: sourceLanguage.rawValue), target: .init(identifier: target.rawValue))
         } else if !translationReady && !preparingTranslation { configuration?.invalidate() }
+    }
+
+    private func restartForLanguageChange() {
+        translations = [:]
+        translationErrors = [:]
+        translationAttempts = [:]
+        translationEpoch = UUID()
+        translationStarted = nil
+        translationReady = false
+        preparingTranslation = false
+        stalledRestarts = 0
+        // Reuse an equal configuration by invalidating it, so an auto/manual language change restarts too.
+        if activePair == sourceLanguage.rawValue + "|" + target.rawValue { configuration?.invalidate() }
+        ensureTranslation()
     }
 
     func retryTranslation() {
@@ -294,9 +367,12 @@ final class LyricModel: ObservableObject {
     func translate(using session: TranslationSession) async {
         let epoch = UUID()
         translationEpoch = epoch
+        let direction = translationDirection
+        let sourceID = sourceLanguage.rawValue
+        let targetID = target.rawValue
         preparingTranslation = true
         translationReady = false
-        translationStatus = "正在准备日语→中文翻译；首次使用按提示下载语言"
+        translationStatus = "正在准备\(direction)；首次使用按提示下载语言"
         defer {
             if epoch == translationEpoch {
                 preparingTranslation = false
@@ -310,13 +386,13 @@ final class LyricModel: ObservableObject {
             guard epoch == translationEpoch else { return }
             preparingTranslation = false
             translationReady = true
-            translationStatus = "日语→中文已就绪"
+            translationStatus = "\(direction)已就绪"
             while !Task.isCancelled, epoch == translationEpoch {
                 guard let index = pendingIndex(), let document else {
                     try await Task.sleep(for: .milliseconds(200)); continue
                 }
                 let text = document.cues[index].text
-                let cacheKey = (track?.key ?? "") + "|" + document.source + "|" + text
+                let cacheKey = TranslationTarget.cacheKey(source: sourceID, target: targetID, text: text)
                 if let cached = translatedTextCache[cacheKey] { translations[index] = cached; continue }
                 let version = documentEpoch
                 translationStarted = Date()
@@ -330,7 +406,7 @@ final class LyricModel: ObservableObject {
                     translatedTextCache[cacheKey] = response.targetText
                     if translatedTextCache.count > 400 { translatedTextCache = [cacheKey: response.targetText] }
                     stalledRestarts = 0
-                    translationStatus = "日语→中文已就绪"
+                    translationStatus = "\(direction)已就绪"
                 } catch {
                     try Task.checkCancellation()
                     guard epoch == translationEpoch else { return }
