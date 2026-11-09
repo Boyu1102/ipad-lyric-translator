@@ -58,6 +58,19 @@ actor LyricsService {
                 return result
             }
         }
+        if let url = ArtistLyricsSource.url(for: track) {
+            do {
+                let (data, response) = try await session.data(from: url)
+                try Task.checkCancellation()
+                if (response as? HTTPURLResponse)?.statusCode == 200, data.count <= 1_000_000,
+                    let html = String(data: data, encoding: .utf8), let document = ArtistLyricsSource.parse(html, sourceURL: url) {
+                    let result = LyricsLookup(selected: nil, alternatives: [], fallback: document)
+                    store(result, for: track.key)
+                    return result
+                }
+            } catch is CancellationError { throw CancellationError() }
+            catch {} // The public release page is an optional plain-text fallback.
+        }
         var ids: Set<Int> = []
         records = records.filter { ids.insert($0.id).inserted }
         records.sort { $0.likelyJapanese && !$1.likelyJapanese }

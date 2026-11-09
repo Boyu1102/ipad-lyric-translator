@@ -63,6 +63,16 @@ let catalogSong = CatalogSong(trackId: 123, trackName: "Example Song", artistNam
 check(catalogSong.matches(studio), "Catalog search must validate English title, artist and duration before accepting an ID")
 check(!catalogSong.matches(MusicTrack(title: "Example Song", artist: "Another Artist", album: "", duration: 214)), "Catalog localization must reject another artist")
 check(!catalogSong.matches(MusicTrack(title: "Example Song", artist: "Example Artist", album: "", duration: 160)), "Catalog localization must reject short/game versions")
+let releaseTrack = MusicTrack(title: "To the Beyond, from a Nameless Shore", artist: "D-D-Dice & Tsukino", album: "", duration: 275.556, storeID: "1822130036")
+let releaseURL = ArtistLyricsSource.url(for: releaseTrack)!
+check(ArtistLyricsSource.url(for: MusicTrack(title: releaseTrack.title, artist: releaseTrack.artist, album: "", duration: 171)) == nil,
+    "Full recording fallback must not be assigned to the game edit")
+let fixtureHTML = "<div>停止 3行</div><div class=lyric_text><p>朝の光 &amp; 雲<p>明日の&#x7a7a;</div><div class=lyric_credit>歌手</div>"
+let publicLyrics = ArtistLyricsSource.parse(fixtureHTML, sourceURL: releaseURL)
+check(publicLyrics?.cues.count == 2 && publicLyrics?.cues.last?.text == "明日の空" && publicLyrics?.isTimed == false,
+    "Artist fallback must read only original lyric paragraphs, decode entities and keep plain lyrics manual")
+check(ArtistLyricsSource.parse("<div>全体を誤読しない</div>", sourceURL: releaseURL) == nil,
+    "Changed source markup must fail safely rather than ingest page controls or credits")
 print("Timeline parsing, seek/advance/instrumental behavior, full-line lyrics and version matching tests passed.")
 
 // Exercise the real service with deterministic HTTP fixtures, never real song lyrics.
@@ -75,7 +85,10 @@ final class FixtureProtocol: URLProtocol {
         let values = Dictionary(uniqueKeysWithValues: query.map { ($0.name, $0.value ?? "") })
         var code = 200
         var object: Any = [:]
-        if url.host == "itunes.apple.com" {
+        var html: String?
+        if url.host == "linkco.re" {
+            html = "<div class=lyric_text><p>朝の空が明るくなる<p>一緒に歩いていこう</div>"
+        } else if url.host == "itunes.apple.com" {
             let localized = url.path == "/lookup"
             check(values["country"] == (localized ? "jp" : "us"), "Catalog search must use the correct metadata storefront")
             check(values["lang"] == (localized ? "ja_jp" : "en_us"), "Catalog localization must request the intended name language")
@@ -89,7 +102,7 @@ final class FixtureProtocol: URLProtocol {
         } else {
             object = [] as [String]
         }
-        let data = try! JSONSerialization.data(withJSONObject: object)
+        let data = html.map { Data($0.utf8) } ?? (try! JSONSerialization.data(withJSONObject: object))
         client?.urlProtocol(self, didReceive: HTTPURLResponse(url: url, statusCode: code, httpVersion: nil, headerFields: nil)!, cacheStoragePolicy: .notAllowed)
         client?.urlProtocol(self, didLoad: data)
         client?.urlProtocolDidFinishLoading(self)
@@ -110,6 +123,9 @@ let nativeTrack = MusicTrack(title: "Library Song", artist: "Library Artist", al
 let nativeLookup = try await fixtureService.lookup(nativeTrack)
 check(nativeLookup.fallback?.language == .japanese && nativeLookup.fallback?.isTimed == false,
     "Available library lyrics should remain usable without inventing a timeline when external lyrics are missing")
+let releaseLookup = try await fixtureService.lookup(releaseTrack)
+check(releaseLookup.fallback?.sourceURL == releaseURL && releaseLookup.fallback?.isTimed == false,
+    "Verified artist release lyrics must be available as an attributed manual fallback")
 let englishCache = TranslationTarget.cacheKey(source: "en", target: "zh-Hans", text: englishText)
 check(englishCache != TranslationTarget.cacheKey(source: "ja", target: "zh-Hans", text: englishText), "Source language must also partition translation caches")
 print("Catalog localization and no-store-ID HTTP fixture tests passed.")

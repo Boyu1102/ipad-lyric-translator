@@ -182,9 +182,10 @@ struct ContentView: View {
             }.buttonStyle(.bordered)
             Text(model.document?.source ?? "自动查找同步歌词，优先日文原词")
                 .font(.caption).foregroundStyle(.secondary)
+            if let url = model.document?.sourceURL { Link("查看原词来源", destination: url).font(.caption) }
             Text("Apple Music 显示的歌词不一定对其他 App 开放。找不到时，可导入自己的歌词；TXT 可手动切句，LRC 可同步播放。")
                 .font(.caption).foregroundStyle(.secondary)
-            Text("不读屏、不录音。联网匹配只发送当前歌名、歌手、专辑、时长及歌曲编号。翻译由设备完成。")
+            Text("不读屏、不录音。联网匹配只发送当前歌曲信息，后备来源会访问已核实的官方发行页面。翻译由设备完成。")
                 .font(.caption2).foregroundStyle(.secondary)
             Text("版本 0.4.0").font(.caption2).foregroundStyle(.tertiary)
         }

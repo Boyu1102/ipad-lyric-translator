@@ -61,6 +61,7 @@ struct LyricsDocument: Sendable {
     var isTimed: Bool
     var source: String
     var instrumental: Bool = false
+    var sourceURL: URL? = nil
     var language: LyricLanguage { LyricLanguage.detect(cues.map(\.text).joined(separator: "\n")) }
 
     func index(at playbackTime: Double, offset: Double = 0) -> Int? {
@@ -218,5 +219,44 @@ struct CatalogSong: Decodable {
         LyricsMatcher.normalized(trackName) == LyricsMatcher.normalized(requested.title) &&
         LyricsMatcher.normalized(artistName) == LyricsMatcher.normalized(requested.artist) &&
         (requested.duration <= 0 || abs(track.duration - requested.duration) <= 3)
+    }
+}
+
+enum ArtistLyricsSource {
+    // Verified public release page, keyed to this exact recording rather than a fuzzy song title.
+    static func url(for track: MusicTrack) -> URL? {
+        guard abs(track.duration - 275.556) <= 3 else { return nil }
+        let english = LyricsMatcher.normalized(track.title) == LyricsMatcher.normalized("To the Beyond, from a Nameless Shore") &&
+            LyricsMatcher.normalized(track.artist) == LyricsMatcher.normalized("D-D-Dice & Tsukino")
+        let japanese = LyricsMatcher.normalized(track.title) == LyricsMatcher.normalized("彼方へ、名もなき海辺より") &&
+            LyricsMatcher.normalized(track.artist) == LyricsMatcher.normalized("打打だいず & 月乃")
+        guard track.storeID == "1822130036" || english || japanese else { return nil }
+        return URL(string: "https://linkco.re/taSCnaZS/songs/3545789/lyrics?lang=en")
+    }
+
+    static func parse(_ html: String, sourceURL: URL) -> LyricsDocument? {
+        // Only read the designated lyric element. Layout changes fail closed, never ingest the whole page.
+        let pattern = #"(?is)<div\b[^>]*\bclass\s*=\s*["']?lyric_text["']?\s*>(.*?)</div>"#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+            let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
+            let range = Range(match.range(at: 1), in: html) else { return nil }
+        var text = String(html[range])
+        guard text.count < 50000, !text.lowercased().contains("<script") else { return nil }
+        text = text.replacingOccurrences(of: #"(?i)</?p\b[^>]*>|<br\s*/?>"#, with: "\n", options: .regularExpression)
+        text = text.replacingOccurrences(of: #"<[^>]*>"#, with: "", options: .regularExpression)
+        let entities = try! NSRegularExpression(pattern: #"&(#x[0-9a-fA-F]+|#[0-9]+|amp|quot|apos|lt|gt|nbsp);"#)
+        for entity in entities.matches(in: text, range: NSRange(text.startIndex..., in: text)).reversed() {
+            guard let tokenRange = Range(entity.range(at: 1), in: text), let wholeRange = Range(entity.range, in: text) else { continue }
+            let token = String(text[tokenRange])
+            let named = ["amp": "&", "quot": "\"", "apos": "'", "lt": "<", "gt": ">", "nbsp": " "]
+            var replacement = named[token]
+            if token.hasPrefix("#x"), let value = UInt32(token.dropFirst(2), radix: 16), let scalar = UnicodeScalar(value) { replacement = String(scalar) }
+            else if token.hasPrefix("#"), let value = UInt32(token.dropFirst()), let scalar = UnicodeScalar(value) { replacement = String(scalar) }
+            if let replacement { text.replaceSubrange(wholeRange, with: replacement) }
+        }
+        var document = LRCParser.parse(text, source: "TuneCore Japan · 官方发行原词")
+        guard !document.cues.isEmpty, !document.isTimed, document.language == .japanese else { return nil }
+        document.sourceURL = sourceURL
+        return document
     }
 }
